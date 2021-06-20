@@ -40,7 +40,7 @@ EInt. Exp2 ::= Integer;
 
 coercions Exp 2;
 
-{-# START_FILE build{{lang}}.sh}
+{-# START_FILE build{{lang}}.sh #-}
 
 #! sh
 cd ./language/
