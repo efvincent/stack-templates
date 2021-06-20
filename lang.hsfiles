@@ -44,7 +44,7 @@ coercions Exp 2;
 #!/usr/bin/env bash
 cd ./language/
 bnfc -m --haskell -d -o gen-{{lang}} {{lang}}.cf
-bnfc -m --haskell --pygments -o gen-{{lang}} {{lang}}.cf
+bnfc -m --pygments -o gen-{{lang}} {{lang}}.cf
 cd ./gen-{{lang}}
 make
 cd ./{{lang}}
