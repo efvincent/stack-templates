@@ -41,8 +41,7 @@ EInt. Exp2 ::= Integer;
 coercions Exp 2;
 
 {-# START_FILE build{{lang}}.sh #-}
-
-#! sh
+#!/usr/bin/env bash
 cd ./language/
 bnfc -m --haskell -d -o gen-{{lang}} {{lang}}.cf
 bnfc -m --haskell --pygments -o gen-{{lang}} {{lang}}.cf
