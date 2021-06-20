@@ -16,9 +16,8 @@ dependencies:
 - array
 
 library:
-  {{lang}}:
-    source-dirs:
-    - language/gen-{{lang}}
+  source-dirs:
+  - language/gen-{{lang}}
 
 executables:
   {{name}}.exe:
@@ -30,7 +29,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - {{lang}}
+    - {{name}}
 
 {-# START_FILE language/{{lang}}.cf #-}
 EAdd. Exp  ::= Exp  "+" Exp1 ;
@@ -52,7 +51,7 @@ Run the parser lexer generator =bnfc= with the command:
 
 #+begin_src bash
 $ # from the project home directory
-$ bnfc -m --haskell -d -o gen-{{lang}} {{lang.cf}}
+$ bnfc -m --haskell -d -o gen-{{lang}} {{lang}}.cf
 $ cd gen-{{lang}}
 $ make
 #+end_src
