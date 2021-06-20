@@ -1,0 +1,2 @@
+* Haskell Stack Templates
+  These are my haskell stack templates. The initial template I'm creating is the =basic= template. The idea is to start with the basic version of a project; no tests, no library, just a single executable. This allows me to spin up a simple project quickly, and include the readme info I need to get rolling.
