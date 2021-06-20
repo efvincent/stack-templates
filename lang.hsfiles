@@ -48,7 +48,7 @@ bnfc -m --haskell --pygments -o gen-{{lang}} {{lang}}.cf
 cd ./gen-{{lang}}
 make
 cd ./{{lang}}
-sed -i hs 's/module Main where/module {{lang}}Test where (test{{lang}})/' Test.hs
+sed -i hs 's/module Main where/module {{lang}}Test (test{{lang}}) where/' Test.hs
 sed -i hs 's/main ::/test{{lang}} ::/' Test.hs
 sed -i hs 's/main = do/test{{lang}}= do/' Test.hs
 mv Test.hs {{lang}}Test.hs
