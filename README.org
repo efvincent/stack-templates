@@ -1,2 +1,22 @@
 * Haskell Stack Templates
   These are my haskell stack templates. The initial template I'm creating is the =basic= template. The idea is to start with the basic version of a project; no tests, no library, just a single executable. This allows me to spin up a simple project quickly, and include the readme info I need to get rolling.
+
+** =lang.hsfile=
+  Template for a project for the front end of a compiler specified by a Labelled BNF Grammar, from which is generated a parser and lexer using a tool called the [[https://bnfc.digitalgrammars.com/][BNF Converter]]. This results in abstract syntax tree types, a lexer, a parser, and a simple wrapper with which to experiment.
+
+*** Specifying the language
+    When utilizing this template, you'll need to specify a name for the language specified by the grammar. This is used to create the =cf= file that species the grammer. The template populates the initial grammar file (=cf= file) with a simple expression grammar. This is the format for specifying paramaters with stack templates:
+
+#+begin_src bash
+  $ stack new efvincent/lang MyCompiler -p "lang:MyLang"
+#+end_src
+
+*** Running BNFC
+    The template will create a shell script that runs the =BNFC= tool to create the Haskell AST, parser, lexer, and test module. You'll have to set the script executable and run it manually, I haven't seen how that can be done with a template. The script also wires up =Main.hs= to call the test module, so be careful of running it if you've put something you care about in =Main.hs=.
+
+#+begin_src bash
+  $ chmod +x buildMyLang.sh
+  $ ./buildMyLang.sh 
+#+end_src
+
+
