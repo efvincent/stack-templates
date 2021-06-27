@@ -42,16 +42,26 @@ coercions Exp 2;
 
 {-# START_FILE build{{lang}}.sh #-}
 #!/usr/bin/env bash
+if ! command -v bnfc &> /dev/null
+then
+    echo -e "\nBNFC is not installed. See the readme at http://github.com/efvincent/stack_templates\n"
+    exit
+fi
+
 cd ./language/
+echo -e "\n********\nRunning BNF Grammar Generator\n********\n"
 bnfc -m --haskell -d -o gen-{{lang}} {{lang}}.cf
 bnfc -m --pygments -o gen-{{lang}} {{lang}}.cf
+echo -e "\n********\nRunning make over generated Grammar\n********\n"
 cd ./gen-{{lang}}
 make
+echo -e "\n********\nSplicing test module into Main.hs\n********"
 cd ./{{lang}}
 sed -i hs 's/module Main where/module {{lang}}.Test (test) where/' Test.hs
 sed -i hs 's/main ::/test ::/' Test.hs
 sed -i hs 's/main = do/test = do/' Test.hs
 cd ../..
+echo -e "Done...\n********\n"
 
 {-# START_FILE README.org #-}
 * Programming Language Project {{name}}
