@@ -44,7 +44,7 @@ coercions Exp 2;
 #!/usr/bin/env bash
 if ! command -v bnfc &> /dev/null
 then
-    echo -e "\nBNFC is not installed. See the readme at http://github.com/efvincent/stack_templates\n"
+    echo -e "\nBNFC is not installed. See the readme at https://github.com/efvincent/stack-templates\n"
     exit
 fi
 
