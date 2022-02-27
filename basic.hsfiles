@@ -59,7 +59,7 @@ default-extensions:
   - OverloadedStrings
   # ehh syntax
   - TypeApplications
-  
+
 executables:
   {{name}}.exe:
     main: Main.hs
@@ -69,11 +69,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    default-extensions:
-    - DeriveGeneric
-    - DeriveAnyClass
-    - DisambiguateRecordFields
-    - OverloadedStrings
 
 {-# START_FILE brittany.yaml #-}
 conf_forward:
