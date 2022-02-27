@@ -18,6 +18,20 @@ version: 0.1.0.0
 dependencies:
 - base >= 4.7 && < 5
 - text
+- aeson
+- containers
+- unordered-containers
+- mtl
+- transformers
+- monad-control
+
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Wincomplete-uni-patterns
+  - -Wredundant-constraints
+  - -Wincomplete-record-updates
+  - -Widentities
 
 executables:
   {{name}}.exe:
@@ -38,8 +52,49 @@ executables:
 import Distribution.Simple
 main = defaultMain
 
-{-# START_FILE README.org #-}
-* Project {{name}}
+{-# START_FILE README.md #-}
+# Project {{name}}
+
+Project description here. This is most likely a project for playing with some idea or learning something. If it's more of a project than that, this file should be edited to have a proper description.
+
+Happy hacking!
+
+## Stack
+
+I use stack rather than cabal or something more industrial strength like nix. This is because I'm still a casual Haskeller, using Haskell to experiment and learn, and because it's the most fun language that I've ever used.
+
+Some tips for using `stack`
+
+### Fast builds
+
+You can skip GHC optimization with
+
+```bash
+$ stack build --fast
+```
+
+If you're running tests (I'm still bad at this), then know that running test implies a build, so you can add the fast flag. The following two are equivilant.
+
+```bash
+$ stack build --fast --test
+$ stack test --fast
+```
+
+### Documentation
+
+It is useful to build documentation as well as code. You can do this with the haddock flag. Note that this can take a long time to run. Open option is to only build docs for dependencies, which prevents having to re-run haddock every time you build.
+
+```bash
+$ stack test --fast --haddock-deps
+```
+
+### Watching for Changes
+
+You can either use `ghcid`, or run a more robust build that's watching for changes with
+
+```bash
+$ stack test --fast --haddock-deps --file-watch
+```
 
 {-# START_FILE src/Main.hs #-}
 module Main where
@@ -49,7 +104,7 @@ main = do
   putStrLn "Default implementation of project {{name}}."
 
 {-# START_FILE LICENSE #-}
-Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2019{{/year}}
+Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2022{{/year}}
 
 All rights reserved.
 
