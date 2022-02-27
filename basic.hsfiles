@@ -55,7 +55,7 @@ main = defaultMain
 {-# START_FILE README.md #-}
 # Project {{name}}
 
-Project description here. This is most likely a project for playing with some idea or learning something. If it's more of a project than that, this file should be edited to have a proper description.
+Project description here. This is most likely a project for playing with some idea or learning something. If it's more of a project than that, this file should be edited to have a proper description. Note that much of this template and information in the initial readme comes from Alexis King's excellent blog post [An opinionated guild to Haskell in 2018](https://lexi-lambda.github.io/blog/2018/02/10/an-opinionated-guide-to-haskell-in-2018/), which may have some bits that are out of date, but still works for me and is chock full of useful information.
 
 Happy hacking!
 
