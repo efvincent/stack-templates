@@ -4,7 +4,7 @@ cradle:
 
 {-# START_FILE stack.yaml #-}
 resolver:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/23.yaml
+  url: lts-19.0
 
 packages:
 - .
