@@ -3,8 +3,7 @@ cradle:
   stack:
 
 {-# START_FILE stack.yaml #-}
-resolver:
-  url: lts-19.0
+resolver: lts-19.0
 
 packages:
 - .
