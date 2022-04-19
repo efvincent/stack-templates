@@ -476,7 +476,9 @@ fi
 cd ./language/
 echo -e "\n********\nRunning BNF Grammar Generator\n********\n"
 bnfc -m --haskell -d -o gen-{{lang}} {{lang}}.cf
-bnfc -m --pygments -o gen-{{lang}} {{lang}}.cf
+# skip the pygments command - creates a directory that only differs by
+# case from the main language directory. TODO - fix it or delete it
+# bnfc -m --pygments -o gen-{{lang}} {{lang}}.cf
 echo -e "\n********\nRunning make over generated Grammar\n********\n"
 cd ./gen-{{lang}}
 make
