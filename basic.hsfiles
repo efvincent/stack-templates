@@ -14,7 +14,8 @@ extra-deps:
     "**/*.x": true,
     "**/*.info": true,
     "**/*.y": true,
-    "**/.stack-work": true
+    "**/.stack-work": true,
+    "**/*.bak": true
   }
 }
 
