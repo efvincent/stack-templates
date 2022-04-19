@@ -501,12 +501,14 @@ bnfc -m --haskell -d -o gen-{{lang}} {{lang}}.cf
 echo -e "\n********\nRunning make over generated Grammar\n********\n"
 cd ./gen-{{lang}}
 make
-echo -e "\n********\nSplicing test module into Main.hs\n********"
+echo -e "\n********\nFixup Test.hs\n********"
 cd ./{{lang}}
 sed -i 's/module Main where/module {{lang}}.Test (test) where/' Test.hs
 sed -i 's/main ::/test ::/' Test.hs
 sed -i 's/main = do/test = do/' Test.hs
 cd ../..
+echo -e "build with stack\n********\n"
+stack build
 echo -e "Done...\n********\n"
 
 {-# START_FILE README.md #-}
