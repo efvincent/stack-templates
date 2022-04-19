@@ -6,7 +6,7 @@ resolver: lts-19.0
 
 extra-deps:
 
-{-# START_FILE .vscode/settings.json -#}
+{-# START_FILE .vscode/settings.json #-}
 {
   "files.exclude": {
     "**/*.hi": true,

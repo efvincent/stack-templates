@@ -6,7 +6,7 @@ packages:
 
 extra-deps:
 
-{-# START_FILE .vscode/settings.json -#}
+{-# START_FILE .vscode/settings.json #-}
 {
   "files.exclude": {
     "**/*.hi": true,
