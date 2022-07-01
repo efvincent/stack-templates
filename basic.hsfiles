@@ -1,6 +1,6 @@
 {-# START_FILE stack.yaml #-}
 resolver: lts-19.0
-system-ghc:true
+system-ghc: true
 packages:
 - .
 
