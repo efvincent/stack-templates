@@ -94,7 +94,6 @@ main = putStrLn "Default implementation of project {{name}}"
 {-# START_FILE src/Lang/Parser.hs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# OPTIONS_GHC -Wno-unused-do-bind #-}
-{-# HLINT ignore "Use <$>" #-}
 
 module Lang.Parser where
 
@@ -883,6 +882,7 @@ language_extensions:
 
 # Ignore some builtin hints
 - ignore: {name: Use camelCase}
+- ignore: {name: Use <$>}
 # - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
 
 
