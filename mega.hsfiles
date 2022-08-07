@@ -91,6 +91,93 @@ module Main where
 main :: IO ()
 main = putStrLn "Default implementation of project {{name}}"
 
+{-# START_FILE src/Lang/Parser.hs #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# OPTIONS_GHC -Wno-unused-do-bind #-}
+{-# HLINT ignore "Use <$>" #-}
+
+module Lang.Parser where
+
+import Data.Functor.Identity (Identity)
+import Data.Void (Void)
+import Text.Megaparsec
+  ( (<?>)
+  , ParsecT
+  , ShowErrorComponent
+  , VisualStream
+  , between
+  , choice
+  , many
+  , parseTest
+  )
+import Text.Megaparsec.Char (alphaNumChar, char, letterChar, space1)
+import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Debug as D
+import Syntax (Term(..), Typ(..))
+
+{-# START_FILE src/Lang/Environment.hs #-}
+module Lang.Environment where
+
+{-# START_FILE src/Lang/Syntax.hs #-}
+module Lang.Syntax where
+
+-- | A term in this simple lambda calculus starting point 
+data Term
+  = Var String
+  | Lambda String Typ Term
+  | LitTrue
+  | LitFalse
+  | LitZero
+  | IfThen Term Term Term
+  | Application Term Term
+  deriving (Show, Eq)
+
+-- | A type in this simple lambda calculus starting point
+data Typ 
+  = Boolean       -- ^ Represents boolean data type
+  | Fn Typ Typ    -- ^ Represents the arrow or function type
+  deriving (Show, Eq)
+
+{-
+
+Grammar, corrected for left recursion
+
+PTERM = "(", TERM, ")"
+
+LAMBDA = "/", identifier, TERM
+
+IDENT = alpha, alphaNum*
+
+IFTE = "if", TERM-START, "then", TERM-START, "else" TERM-START     
+
+TERM = TERM-START, [TERM-END]     -- start is required, end is optional 
+
+TERM-START
+  = PTERM
+  | LAMBDA
+  | IFTE
+  | IDENT
+
+TERM-END
+  = TERM            -- term coming after another term is an application
+  | NOTHING         -- basically, not an application
+
+TYP
+  = [TYP-START]
+  | NOTHING
+
+PTYP = "(", TYP, ")"
+
+TYP-START
+  = PTYP
+  | BOOL
+
+TYP-END
+  = TYP
+  | NOTHING
+
+-}
+
 {-# START_FILE makefile #-}
 OPTIMIZATION=-O0
 build:
