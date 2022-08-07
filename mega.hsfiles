@@ -85,95 +85,11 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
 
-{-# START_FILE brittany.yaml #-}
-conf_forward:
-  options_ghc:
-    # trivial
-    - -XEmptyCase
-    - -XFlexibleContexts
-    - -XFlexibleInstances
-    - -XInstanceSigs
-    - -XMultiParamTypeClasses
-    # only activated once used
-    - -XLambdaCase
-    - -XMultiWayIf
-    - -XNamedFieldPuns
-    - -XTupleSections
-    # no cost deriving power
-    - -XDeriveFoldable
-    - -XDeriveFunctor
-    - -XDeriveGeneric
-    - -XDeriveLift
-    - -XDeriveTraversable
-    - -XDerivingStrategies
-    - -XGeneralizedNewtypeDeriving
-    - -XStandaloneDeriving
-    # used everywhere anyway
-    - -XOverloadedStrings
-    # ehh syntax
-    - -XTypeApplications
+{-# START_FILE src/Main.hs #-}
+module Main where
 
-{-# START_FILE .hlint.yaml #-}
-# HLint configuration file
-# https://github.com/ndmitchell/hlint
-##########################
-
-# This file contains a template configuration file, which is typically
-# placed as .hlint.yaml in the root of your project
-
-
-# Specify additional command line arguments
-#
-# - arguments: [--color, --cpp-simple, -XQuasiQuotes]
-
-
-# Control which extensions/flags/modules/functions can be used
-#
-# - extensions:
-#   - default: false # all extension are banned by default
-#   - name: [PatternGuards, ViewPatterns] # only these listed extensions can be used
-#   - {name: CPP, within: CrossPlatform} # CPP can only be used in a given module
-#
-# - flags:
-#   - {name: -w, within: []} # -w is allowed nowhere
-#
-# - modules:
-#   - {name: [Data.Set, Data.HashSet], as: Set} # if you import Data.Set qualified, it must be as 'Set'
-#   - {name: Control.Arrow, within: []} # Certain modules are banned entirely
-#
-# - functions:
-#   - {name: unsafePerformIO, within: []} # unsafePerformIO can only appear in no modules
-
-
-# Add custom hints for this project
-#
-# Will suggest replacing "wibbleMany [myvar]" with "wibbleOne myvar"
-# - error: {lhs: "wibbleMany [x]", rhs: wibbleOne x}
-
-
-# Turn on hints that are off by default
-#
-# Ban "module X(module X) where", to require a real export list
-# - warn: {name: Use explicit module export list}
-#
-# Replace a $ b $ c with a . b $ c
-# - group: {name: dollar, enabled: true}
-#
-# Generalise map to fmap, ++ to <>
-# - group: {name: generalise, enabled: true}
-
-
-# Ignore some builtin hints
-- ignore: {name: Use camelCase}
-# - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
-
-
-# Define some custom infix operators
-# - fixity: infixr 3 ~^#^~
-
-
-# To generate a suitable file for HLint do:
-# $ hlint --default > .hlint.yaml
+main :: IO ()
+main = putStrLn "Default implementation of project {{name}}"
 
 {-# START_FILE makefile #-}
 OPTIMIZATION=-O0
@@ -233,6 +149,97 @@ bundle:
 	rm -f result
 	nix-build nix/bundle.nix
 	mv result template
+
+{-# START_FILE .gitignore #-}
+.stack-work/
+network-uri-lenses.cabal
+.ghc.environment*
+dist*
+.#*
+result
+TAGS
+
+*.hi
+*.o
+
+{-# START_FILE .ghci #-}
+:set -i./src:./test
+:set -fobject-code
+:set -O0
+:set -j4
+:set +s
+:set -w
+
+{-# START_FILE Setup.hs #-}
+import Distribution.Simple
+main = defaultMain
+
+{-# START_FILE README.md #-}
+# Megaparsec project {{name}}
+
+## Stack
+
+I use stack rather than cabal or something more industrial strength like nix. This is because I'm still a casual Haskeller, using Haskell to experiment and learn, and because it's the most fun language that I've ever used.
+
+Some tips for using `stack`
+
+### Fast builds
+
+You can skip GHC optimization with
+
+```bash
+$ stack build --fast
+```
+
+If you're running tests (I'm still bad at this), then know that running test implies a build, so you can add the fast flag. The following two are equivilant.
+
+```bash
+$ stack build --fast --test
+$ stack test --fast
+```
+
+### Documentation
+
+It is useful to build documentation as well as code. You can do this with the haddock flag. Note that this can take a long time to run. Open option is to only build docs for dependencies, which prevents having to re-run haddock every time you build.
+
+```bash
+$ stack test --fast --haddock-deps
+```
+
+### Watching for Changes
+
+You can either use `ghcid`, or run a more robust build that's watching for changes with
+
+```bash
+$ stack test --fast --haddock-deps --file-watch
+```
+{-# START_FILE brittany.yaml #-}
+conf_forward:
+  options_ghc:
+    # trivial
+    - -XEmptyCase
+    - -XFlexibleContexts
+    - -XFlexibleInstances
+    - -XInstanceSigs
+    - -XMultiParamTypeClasses
+    # only activated once used
+    - -XLambdaCase
+    - -XMultiWayIf
+    - -XNamedFieldPuns
+    - -XTupleSections
+    # no cost deriving power
+    - -XDeriveFoldable
+    - -XDeriveFunctor
+    - -XDeriveGeneric
+    - -XDeriveLift
+    - -XDeriveTraversable
+    - -XDerivingStrategies
+    - -XGeneralizedNewtypeDeriving
+    - -XStandaloneDeriving
+    # used everywhere anyway
+    - -XOverloadedStrings
+    # ehh syntax
+    - -XTypeApplications
 
 {-# START_FILE .stylish-haskell.yaml #-}
 # stylish-haskell configuration file
@@ -490,76 +497,67 @@ language_extensions:
   # ehh syntax
   - TypeApplications
 
-{-# START_FILE .gitignore #-}
-.stack-work/
-network-uri-lenses.cabal
-.ghc.environment*
-dist*
-.#*
-result
-TAGS
+{-# START_FILE .hlint.yaml #-}
+# HLint configuration file
+# https://github.com/ndmitchell/hlint
+##########################
 
-*.hi
-*.o
-
-{-# START_FILE .ghci #-}
-:set -i./src:./test
-:set -fobject-code
-:set -O0
-:set -j4
-:set +s
-:set -w
-
-{-# START_FILE Setup.hs #-}
-import Distribution.Simple
-main = defaultMain
-
-{-# START_FILE README.md #-}
-# Megaparsec project {{name}}
-
-## Stack
-
-I use stack rather than cabal or something more industrial strength like nix. This is because I'm still a casual Haskeller, using Haskell to experiment and learn, and because it's the most fun language that I've ever used.
-
-Some tips for using `stack`
-
-### Fast builds
-
-You can skip GHC optimization with
-
-```bash
-$ stack build --fast
-```
-
-If you're running tests (I'm still bad at this), then know that running test implies a build, so you can add the fast flag. The following two are equivilant.
-
-```bash
-$ stack build --fast --test
-$ stack test --fast
-```
-
-### Documentation
-
-It is useful to build documentation as well as code. You can do this with the haddock flag. Note that this can take a long time to run. Open option is to only build docs for dependencies, which prevents having to re-run haddock every time you build.
-
-```bash
-$ stack test --fast --haddock-deps
-```
-
-### Watching for Changes
-
-You can either use `ghcid`, or run a more robust build that's watching for changes with
-
-```bash
-$ stack test --fast --haddock-deps --file-watch
-```
+# This file contains a template configuration file, which is typically
+# placed as .hlint.yaml in the root of your project
 
 
-{-# START_FILE src/Main.hs #-}
-module Main where
+# Specify additional command line arguments
+#
+# - arguments: [--color, --cpp-simple, -XQuasiQuotes]
 
-main :: IO ()
-main = putStrLn "Default implementation of project {{name}}"
+
+# Control which extensions/flags/modules/functions can be used
+#
+# - extensions:
+#   - default: false # all extension are banned by default
+#   - name: [PatternGuards, ViewPatterns] # only these listed extensions can be used
+#   - {name: CPP, within: CrossPlatform} # CPP can only be used in a given module
+#
+# - flags:
+#   - {name: -w, within: []} # -w is allowed nowhere
+#
+# - modules:
+#   - {name: [Data.Set, Data.HashSet], as: Set} # if you import Data.Set qualified, it must be as 'Set'
+#   - {name: Control.Arrow, within: []} # Certain modules are banned entirely
+#
+# - functions:
+#   - {name: unsafePerformIO, within: []} # unsafePerformIO can only appear in no modules
+
+
+# Add custom hints for this project
+#
+# Will suggest replacing "wibbleMany [myvar]" with "wibbleOne myvar"
+# - error: {lhs: "wibbleMany [x]", rhs: wibbleOne x}
+
+
+# Turn on hints that are off by default
+#
+# Ban "module X(module X) where", to require a real export list
+# - warn: {name: Use explicit module export list}
+#
+# Replace a $ b $ c with a . b $ c
+# - group: {name: dollar, enabled: true}
+#
+# Generalise map to fmap, ++ to <>
+# - group: {name: generalise, enabled: true}
+
+
+# Ignore some builtin hints
+- ignore: {name: Use camelCase}
+# - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
+
+
+# Define some custom infix operators
+# - fixity: infixr 3 ~^#^~
+
+
+# To generate a suitable file for HLint do:
+# $ hlint --default > .hlint.yaml
 
 {-# START_FILE LICENSE #-}
 Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2022{{/year}}
