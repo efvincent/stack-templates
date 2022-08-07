@@ -113,7 +113,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Text.Megaparsec.Debug as D
-import Syntax (Term(..), Typ(..))
+import Lang.Syntax (Term(..), Typ(..))
 
 {-# START_FILE src/Lang/Environment.hs #-}
 module Lang.Environment where
