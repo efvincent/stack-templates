@@ -325,6 +325,16 @@ TYP-END
   | NOTHING
 
 -}
+{-# START_FILE src/Repl.hs #-}
+module Repl where
+
+import Data.Text (Text)
+import Text.Megaparsec (parseTest)
+import Lang.Parser (term)
+
+-- | ptt is a test function for use in the REPL to test term parsings
+ptt :: Text -> IO ()
+ptt = parseTest term
 
 {-# START_FILE makefile #-}
 OPTIMIZATION=-O0
