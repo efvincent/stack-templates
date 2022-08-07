@@ -261,8 +261,98 @@ typEnd = do
     t <- typ
     pure $ Just t
 
+{-# START_FILE src/Extra/List.hs #-}
+module Extra.List ((!?)) where
+
+-- | !? returns the element @Just a@ in the list @[a]@ at position @Int@
+-- when that index exists in the list, otherwise returns @Nothing@  
+(!?) :: [a] -> Int -> Maybe a
+xs !? n | n > length xs = Nothing
+[] !? _ = Nothing
+(x : xs) !? n
+  | n < 0     = Nothing
+  | n == 0    = Just x
+  | otherwise = xs !? (n - 1)
+
 {-# START_FILE src/Lang/Environment.hs #-}
-module Lang.Environment where
+module Lang.Environment
+  ( insertLocal
+  , getLocalIdx
+  , getLocalName
+  , insertGlobal
+  , getGlobal
+  ) where
+
+import Data.List (elemIndex)
+import qualified Data.Map as M
+import Data.Text (Text)
+import Lang.Syntax (Term, Typ)
+import Extra.List ((!?))
+
+-- | Binding indicates a known variable name in an environment or
+-- a known name corresponding to a type in an environment. Optionally
+-- we could use different environments for name (which is really only)
+-- needed to pretty-print) and binding a variable to a type, but this is
+-- the approach used in TAPL so it's the selected starting point
+data Binding
+  = NameBind
+  | VarBind Typ
+  deriving (Eq, Show)
+
+-- | LocalBind only needs to capture the name and the binding (either
+-- a name or type binding). It's position in the list of local bindings
+-- is how the DeBruijn index is maintained
+type LocalBind = (Text, Binding)
+
+-- | GlobalBind captures the name, the binding (either name or type) and
+-- the term it is bound to. This is because in the SimplyTyped Lambda Calculus
+-- implementation (FullSimple) in TAPL, only functions can be bound at
+-- at the global level
+type GlobalBind = (Binding, Term)
+
+-- | Env is the environment at any given point in parsing the source. The 
+-- @_locals@ will have local bindings identified by the DeBruijn index, which
+-- is the same is the index position of the binding in the list. The @_globals@
+-- are found by scanning the list for variable name. Alternatively, a map
+-- could be used for global indexing more efficiently
+data Env = Env
+  { _locals  :: [LocalBind]
+  , _globals :: M.Map Text GlobalBind
+  }
+  deriving (Eq, Show)
+
+{-
+    Local Environment
+-}
+
+-- | insertLocal inserts a local variable into the environment
+insertLocal :: Text -> Env -> Env
+insertLocal var env@Env { _locals = ls } =
+  env { _locals = (var, NameBind) : ls }
+
+-- | getLocalIdx retrieves a binding from the local environment by the
+-- variable name if it exists
+getLocalIdx :: Text -> Env -> Maybe Int
+getLocalIdx var Env { _locals = ls } = elemIndex var (fst <$> ls)
+
+-- | getLocalName retrieves a binding from the local environment by the
+-- DeBruijn index if it exists
+getLocalName :: Int -> Env -> Maybe Text
+getLocalName idx Env { _locals = ls } = (fst <$> ls) !? idx
+
+{-
+    Global Environment
+-}
+
+-- | insertGlobal inserts a variable name, term pair into the global environment 
+insertGlobal :: (Text, Term) -> Env -> Env
+insertGlobal (var, term) env@Env { _globals = gs } =
+  env { _globals = M.insert var (NameBind, term) gs }
+
+-- | getGlobal retrieves a term from the global environment by the variable
+-- name if it exists
+getGlobal :: Text -> Env -> Maybe Term
+getGlobal var Env { _globals = gs } = snd <$> M.lookup var gs
 
 {-# START_FILE src/Lang/Syntax.hs #-}
 module Lang.Syntax where
