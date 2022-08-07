@@ -505,13 +505,7 @@ TAGS
 :set -O0
 :set -j4
 :set +s
-:set -Wall
-:set -Wincomplete-uni-patterns
-:set -Wincomplete-record-updates
-:set -Widentities
-:set -Wredundant-constraints
-:set -Wcpp-undef
-:set -Werror=incomplete-patterns
+:set -w
 
 {-# START_FILE Setup.hs #-}
 import Distribution.Simple
