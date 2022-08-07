@@ -260,17 +260,19 @@ typEnd = do
     symbol "->"
     t <- typ
     pure $ Just t
-          
+
 {-# START_FILE src/Lang/Environment.hs #-}
 module Lang.Environment where
 
 {-# START_FILE src/Lang/Syntax.hs #-}
 module Lang.Syntax where
 
+import Data.Text (Text)
+
 -- | A term in this simple lambda calculus starting point 
 data Term
-  = Var String
-  | Lambda String Typ Term
+  = Var Text
+  | Lambda Text Typ Term
   | LitTrue
   | LitFalse
   | LitZero
