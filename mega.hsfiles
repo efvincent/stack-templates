@@ -99,12 +99,12 @@ main = putStrLn "Default implementation of project {{name}}"
 module Lang.Parser where
 
 import Data.Functor.Identity (Identity)
+import Data.Text (Text, pack, unpack)
 import Data.Void (Void)
+import Lang.Syntax (Term(..), Typ(..))
 import Text.Megaparsec
   ( (<?>)
   , ParsecT
-  , ShowErrorComponent
-  , VisualStream
   , between
   , choice
   , many
@@ -113,8 +113,154 @@ import Text.Megaparsec
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Text.Megaparsec.Debug as D
-import Lang.Syntax (Term(..), Typ(..))
 
+type Parser = ParsecT Void Text Identity
+
+-- | set to true to debug things
+debug :: Bool
+debug = False
+
+-- | dbg that can be disabled
+dbg :: Show a => Text -> Parser a -> Parser a
+dbg s = if debug then D.dbg (unpack s) else id
+
+-- | ws is a whitespace consuming parser
+ws :: Parser ()
+ws =
+  L.space space1 (L.skipLineComment "--") (L.skipBlockCommentNested "{-" "-}")
+
+-- | lexeme extends a parser to consume whitespace
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme ws
+
+-- | symbol creates a parser that parses the passed 
+-- string argument and following whitespace
+symbol :: Text -> Parser Text
+symbol s = do
+  L.symbol ws s
+
+-- | schar is char parser that consumes space
+schar :: Char -> Parser Char
+schar c = do
+  c' <- char c
+  ws
+  pure c'
+
+-- | parens extens a parser to do it's parsing within
+-- parenthesis
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
+
+{-
+Now the actual parsing...
+-}
+
+-- | keywords or reserved words will be rejected as identifiers
+keywords :: [Text]
+keywords = ["if", "then", "else"]
+
+-- | parses an identifier
+ident :: Parser Text
+ident = lexeme (ident' >>= (check . pack))
+ where
+  ident' = (:) <$> letterChar <*> many alphaNumChar
+  check name
+    | name `elem` keywords = fail $ "keyword " <> unpack name <> " is reserved"
+    | otherwise            = pure name
+
+-- | var parses variables which are identifiers as lexemes
+var :: Parser Term
+var = Var <$> lexeme ident
+
+-- | lambda parses a lambda term which may be indicated by 
+-- an either forwards or backwards slash for ease of testing
+-- in the REPL
+lambda :: Parser Term
+lambda = do
+  choice [schar '\\', schar '/']
+  p <- ident
+  schar ':' <?> "type annotation starting with ':'"
+  ty <- typ
+  schar '.'
+  t <- term
+  pure $ Lambda p ty t
+
+-- | ifte parses an if then else term. It parses the the terms
+-- (predicate, true clause, and false clause) with @termStart@
+-- meaning that terms completed using @termEnd@ like application 
+-- need to be wrapped in parenthesis
+ifte :: Parser Term
+ifte = do
+  symbol "if"
+  predicate <- termStart
+  symbol "then"
+  tclause <- termStart
+  symbol "else"
+  fclause <- termStart
+  pure $ IfThen predicate tclause fclause
+
+-- | term consists of a termStart and optionally another full term
+-- following the term start. If the optional second term exists, then
+-- what we have is the application of one term to another
+term :: Parser Term
+term = do
+  e1  <- termStart
+  mE2 <- termEnd
+  case mE2 of
+    Nothing -> pure e1
+    Just e2 -> pure $ Application e1 e2
+
+-- | termStart is one of the following: A full term wrapped in parens,
+-- one of the literals (true, false, zero), an if-then-else statement,
+-- a lambda, or a variable
+termStart :: Parser Term
+termStart =
+  choice
+      [ parens term <?> "parenthesized term"
+      , LitTrue <$ symbol "true"
+      , LitFalse <$ symbol "false"
+      , LitZero <$ symbol "0"
+      , ifte
+      , lambda
+      , var
+      ]
+    <?> "start of a term"
+
+-- | termEnd parses either a full @Term@ or @Nothing@. It's used after a 
+-- @termStart@ to see if the @termStart@ is a stand-alone @Term@, or a 
+-- @Term@ being applied to a second @Term@
+termEnd :: Parser (Maybe Term)
+termEnd = choice [end, pure Nothing]
+ where
+  end :: Parser (Maybe Term)
+  end = do
+    t <- term
+    pure $ Just t
+
+-- | typ parses a type, which consists of  
+typ :: Parser Typ
+typ = do
+  t1  <- typStart
+  mT2 <- typEnd
+  case mT2 of
+    Nothing -> pure t1
+    Just t2 -> pure $ Fn t1 t2
+
+typStart :: Parser Typ
+typStart =
+  choice [parens typ <?> "parenthesized type", Boolean <$ symbol "Bool"]
+    <?> "a type"
+
+typEnd :: Parser (Maybe Typ)
+typEnd = do
+  choice [end, pure Nothing] <?> "function return"
+ where
+  end :: Parser (Maybe Typ)
+  end = do
+    symbol "->"
+    t <- typ
+    pure $ Just t
+          
 {-# START_FILE src/Lang/Environment.hs #-}
 module Lang.Environment where
 
