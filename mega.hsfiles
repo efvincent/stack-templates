@@ -267,7 +267,6 @@ module Extra.List ((!?)) where
 -- | !? returns the element @Just a@ in the list @[a]@ at position @Int@
 -- when that index exists in the list, otherwise returns @Nothing@  
 (!?) :: [a] -> Int -> Maybe a
-xs !? n | n > length xs = Nothing
 [] !? _ = Nothing
 (x : xs) !? n
   | n < 0     = Nothing
