@@ -369,16 +369,25 @@ module Lang.Syntax where
 
 import Data.Text (Text, unpack)
 
+data Literal
+  = LBool Bool
+  | LInt Int
+  deriving (Eq)
+
+instance Show Literal where
+  show (LBool True ) = "True"
+  show (LBool False) = "False"
+  show (LInt  i    ) = show i
+
 -- | A term in this simple lambda calculus starting point 
 data Term
   = Var Text Int
   | Lambda Text Typ Term
-  | LitTrue
-  | LitFalse
-  | LitZero
+  | Lit Literal
   | Succ Term
   | Pred Term
   | IfThen Term Term Term
+  | IsZero Term
   | App Term Term
   deriving (Eq)
 
@@ -386,15 +395,14 @@ instance Show Term where
   show (Var v deBruijn) = unpack v <> "@" <> show deBruijn
   show (Lambda boundVar typ body) =
     "λ" <> unpack boundVar <> ":" <> show typ <> "." <> show body
-  show LitTrue  = "true"
-  show LitFalse = "false"
-  show (Succ t) = "succ " <> show t
-  show (Pred t) = "pred " <> show t
-  show LitZero  = "0"
+  show (Lit    l) = show l
+  show (Succ   t) = "succ " <> show t
+  show (Pred   t) = "pred " <> show t
+  show (IsZero t) = "isZero " <> show t
   show (IfThen predicate tclause fclause) =
-    "if "
-      <> show predicate
-      <> " then "
+    "if ("                -- note that predicate may have extra parens
+      <> show predicate   -- until things like isZero, succ, etc are handled
+      <> ") then "        -- like function applications from a prelude
       <> show tclause
       <> " else "
       <> show fclause
@@ -402,17 +410,20 @@ instance Show Term where
 
 -- | A type in this simple lambda calculus starting point
 data Typ
-  = Boolean       -- ^ Represents boolean data type
-  | Fn Typ Typ    -- ^ Represents the arrow or function type
+  = TBool       -- ^ Represents boolean data type
+  | TInt        -- ^ Represents integer data type
+  | TFn Typ Typ    -- ^ Represents the arrow or function type
   deriving (Eq)
 
 instance Show Typ where
-  show Boolean    = "Bool"
-  show (Fn t1 t2) = "(" <> show t1 <> "->" <> show t2 <> ")"
+  show TBool       = "Bool"
+  show TInt        = "Int"
+  show (TFn t1 t2) = "(" <> show t1 <> "->" <> show t2 <> ")"
 
 {-
 
-Grammar, corrected for left recursion
+Grammar, corrected for left recursion (early version, it's changed, but the
+part about eliminating left recursion in the term and type are the same)
 
 PTERM = "(", TERM, ")"
 
