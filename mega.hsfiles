@@ -222,6 +222,8 @@ termStart =
         , LitTrue <$ symbol "true" <?> eMsg
         , LitFalse <$ symbol "false" <?> eMsg
         , LitZero <$ symbol "0" <?> eMsg
+        , Succ <$ symbol "succ" <*> term <?> eMsg
+        , Pred <$ symbol "pred" <*> term <?> eMsg
         , ifte
         , lambda
         , var
@@ -374,6 +376,8 @@ data Term
   | LitTrue
   | LitFalse
   | LitZero
+  | Succ Term
+  | Pred Term
   | IfThen Term Term Term
   | App Term Term
   deriving (Eq)
@@ -384,6 +388,8 @@ instance Show Term where
     "λ" <> unpack boundVar <> ":" <> show typ <> "." <> show body
   show LitTrue  = "true"
   show LitFalse = "false"
+  show (Succ t) = "succ " <> show t
+  show (Pred t) = "pred " <> show t
   show LitZero  = "0"
   show (IfThen predicate tclause fclause) =
     "if "
@@ -443,6 +449,10 @@ TYP-END
   | NOTHING
 
 -}
+
+{-# START_FILE src/Lang/Evaluator.hs #-}
+module Lang.Evaluator where
+
 {-# START_FILE src/Extra/Repl.hs #-}
 module Extra.Repl where
 
