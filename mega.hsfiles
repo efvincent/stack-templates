@@ -94,26 +94,21 @@ main = putStrLn "Default implementation of project {{name}}"
 {-# START_FILE src/Lang/Parser.hs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# OPTIONS_GHC -Wno-unused-do-bind #-}
+{-# HLINT ignore "Use <$>" #-}
 
 module Lang.Parser where
 
-import Data.Functor.Identity (Identity)
+import Control.Monad.Reader (Reader, asks, MonadReader (local))
 import Data.Text (Text, pack, unpack)
 import Data.Void (Void)
+import Lang.Environment (Env, getGlobal, getLocalIdx, insertLocal)
 import Lang.Syntax (Term(..), Typ(..))
-import Text.Megaparsec
-  ( (<?>)
-  , ParsecT
-  , between
-  , choice
-  , many
-  , parseTest
-  )
+import Text.Megaparsec ((<?>), ParsecT, between, choice, many)
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Text.Megaparsec.Debug as D
 
-type Parser = ParsecT Void Text Identity
+type Parser = ParsecT Void Text (Reader Env)
 
 -- | set to true to debug things
 debug :: Bool
@@ -169,20 +164,26 @@ ident = lexeme (ident' >>= (check . pack))
 
 -- | var parses variables which are identifiers as lexemes
 var :: Parser Term
-var = Var <$> lexeme ident
+var = do -- Var <$> lexeme ident
+  v <- lexeme ident
+  asks (getLocalIdx v) >>= \case
+    Just n  -> pure $ Var v n
+    Nothing -> asks (getGlobal v) >>= \case
+      Just t  -> pure t
+      Nothing -> fail $ "no local or global variable named " <> unpack v
 
 -- | lambda parses a lambda term which may be indicated by 
 -- an either forwards or backwards slash for ease of testing
 -- in the REPL
 lambda :: Parser Term
 lambda = do
-  choice [schar '\\', schar '/']
-  p <- ident
+  choice [schar '\\', schar '/', schar 'λ']
+  boundVar <- ident
   schar ':' <?> "type annotation starting with ':'"
   ty <- typ
   schar '.'
-  t <- term
-  pure $ Lambda p ty t
+  body <- local (insertLocal boundVar) term
+  pure $ Lambda boundVar ty body
 
 -- | ifte parses an if then else term. It parses the the terms
 -- (predicate, true clause, and false clause) with @termStart@
@@ -207,23 +208,25 @@ term = do
   mE2 <- termEnd
   case mE2 of
     Nothing -> pure e1
-    Just e2 -> pure $ Application e1 e2
+    Just e2 -> pure $ App e1 e2
 
 -- | termStart is one of the following: A full term wrapped in parens,
 -- one of the literals (true, false, zero), an if-then-else statement,
 -- a lambda, or a variable
 termStart :: Parser Term
 termStart =
-  choice
-      [ parens term <?> "parenthesized term"
-      , LitTrue <$ symbol "true"
-      , LitFalse <$ symbol "false"
-      , LitZero <$ symbol "0"
-      , ifte
-      , lambda
-      , var
-      ]
-    <?> "start of a term"
+  let eMsg = "function application, literal or term in parenthesis" :: String
+  in
+    choice
+        [ parens term <?> "parenthesized term"
+        , LitTrue <$ symbol "true" <?> eMsg
+        , LitFalse <$ symbol "false" <?> eMsg
+        , LitZero <$ symbol "0" <?> eMsg
+        , ifte
+        , lambda
+        , var
+        ]
+      <?> "start of a term"
 
 -- | termEnd parses either a full @Term@ or @Nothing@. It's used after a 
 -- @termStart@ to see if the @termStart@ is a stand-alone @Term@, or a 
@@ -279,6 +282,8 @@ module Lang.Environment
   , getLocalName
   , insertGlobal
   , getGlobal
+  , emptyEnv
+  , Env(..)
   ) where
 
 import Data.List (elemIndex)
@@ -319,6 +324,9 @@ data Env = Env
   }
   deriving (Eq, Show)
 
+emptyEnv :: Env
+emptyEnv = Env [] M.empty
+
 {-
     Local Environment
 -}
@@ -353,26 +361,48 @@ getGlobal :: Text -> Env -> Maybe Term
 getGlobal var Env { _globals = gs } = snd <$> M.lookup var gs
 
 {-# START_FILE src/Lang/Syntax.hs #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
 module Lang.Syntax where
 
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 
 -- | A term in this simple lambda calculus starting point 
 data Term
-  = Var Text
+  = Var Text Int
   | Lambda Text Typ Term
   | LitTrue
   | LitFalse
   | LitZero
   | IfThen Term Term Term
-  | Application Term Term
-  deriving (Show, Eq)
+  | App Term Term
+  deriving (Eq)
+
+instance Show Term where
+  show (Var v deBruijn) = unpack v <> "@" <> show deBruijn
+  show (Lambda boundVar typ body) =
+    "λ" <> unpack boundVar <> ":" <> show typ <> "." <> show body
+  show LitTrue  = "true"
+  show LitFalse = "false"
+  show LitZero  = "0"
+  show (IfThen predicate tclause fclause) =
+    "if "
+      <> show predicate
+      <> " then "
+      <> show tclause
+      <> " else "
+      <> show fclause
+  show (App t1 t2) = "(" <> show t1 <> " " <> show t2 <> ")"
 
 -- | A type in this simple lambda calculus starting point
-data Typ 
+data Typ
   = Boolean       -- ^ Represents boolean data type
   | Fn Typ Typ    -- ^ Represents the arrow or function type
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show Typ where
+  show Boolean    = "Bool"
+  show (Fn t1 t2) = "(" <> show t1 <> "->" <> show t2 <> ")"
 
 {-
 
@@ -413,16 +443,22 @@ TYP-END
   | NOTHING
 
 -}
-{-# START_FILE src/Repl.hs #-}
-module Repl where
+{-# START_FILE src/Extra/Repl.hs #-}
+module Extra.Repl where
 
 import Data.Text (Text)
-import Text.Megaparsec (parseTest)
-import Lang.Parser (term)
+import Text.Megaparsec (ParseErrorBundle, runParserT)
+import Lang.Parser (term, Parser)
+import Lang.Syntax (Term)
+import Data.Void (Void)
+import Control.Monad.Reader (runReader)
+import Lang.Environment (emptyEnv)
 
--- | ptt is a test function for use in the REPL to test term parsings
-ptt :: Text -> IO ()
-ptt = parseTest term
+ps :: Parser Term -> Text -> Either (ParseErrorBundle Text Void) Term
+ps parser s = runReader (runParserT parser "repl" s) emptyEnv
+
+ptt :: Text -> Either (ParseErrorBundle Text Void) Term
+ptt = ps term 
 
 {-# START_FILE makefile #-}
 OPTIMIZATION=-O0
