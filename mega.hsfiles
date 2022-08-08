@@ -145,6 +145,14 @@ schar c = do
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+-- | uint parses unsigned integers
+uint :: Parser Int
+uint = lexeme L.decimal
+
+-- | int parses signed integers, the leading + is allowed but optional
+int :: Parser Int
+int = L.signed ws int
+
 {-
 Now the actual parsing...
 -}
@@ -221,7 +229,7 @@ termStart =
         [ parens term <?> "parenthesized term"
         , Lit (LBool True) <$ symbol "True" <?> eMsg
         , Lit (LBool False) <$ symbol "False" <?> eMsg
-        , Lit . LInt <$> lexeme L.decimal <?> eMsg
+        , Lit . LInt <$> int <?> eMsg
         , Succ <$ symbol "succ" <*> term <?> eMsg
         , Pred <$ symbol "pred" <*> term <?> eMsg
         , IsZero <$ symbol "isZero" <*> term <?> eMsg
