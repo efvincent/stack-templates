@@ -151,7 +151,7 @@ uint = lexeme L.decimal
 
 -- | int parses signed integers, the leading + is allowed but optional
 int :: Parser Int
-int = L.signed ws int
+int = L.signed ws uint
 
 {-
 Now the actual parsing...
