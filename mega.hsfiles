@@ -219,11 +219,12 @@ termStart =
   in
     choice
         [ parens term <?> "parenthesized term"
-        , LitTrue <$ symbol "true" <?> eMsg
-        , LitFalse <$ symbol "false" <?> eMsg
-        , LitZero <$ symbol "0" <?> eMsg
+        , Lit (LBool True) <$ symbol "True" <?> eMsg
+        , Lit (LBool False) <$ symbol "False" <?> eMsg
+        , Lit . LInt <$> lexeme L.decimal <?> eMsg
         , Succ <$ symbol "succ" <*> term <?> eMsg
         , Pred <$ symbol "pred" <*> term <?> eMsg
+        , IsZero <$ symbol "isZero" <*> term <?> eMsg
         , ifte
         , lambda
         , var
@@ -248,11 +249,15 @@ typ = do
   mT2 <- typEnd
   case mT2 of
     Nothing -> pure t1
-    Just t2 -> pure $ Fn t1 t2
+    Just t2 -> pure $ TFn t1 t2
 
 typStart :: Parser Typ
 typStart =
-  choice [parens typ <?> "parenthesized type", Boolean <$ symbol "Bool"]
+  choice
+      [ parens typ <?> "parenthesized type"
+      , TBool <$ symbol "Bool"
+      , TInt <$ symbol "Int"
+      ]
     <?> "a type"
 
 typEnd :: Parser (Maybe Typ)
