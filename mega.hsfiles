@@ -98,11 +98,11 @@ main = putStrLn "Default implementation of project {{name}}"
 
 module Lang.Parser where
 
-import Control.Monad.Reader (Reader, asks, MonadReader (local))
+import Control.Monad.Reader (MonadReader(local), Reader, asks)
 import Data.Text (Text, pack, unpack)
 import Data.Void (Void)
 import Lang.Environment (Env, getGlobal, getLocalIdx, insertLocal)
-import Lang.Syntax (Term(..), Typ(..))
+import Lang.Syntax (Literal(..), Term(..), Typ(..))
 import Text.Megaparsec ((<?>), ParsecT, between, choice, many)
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, space1)
 import qualified Text.Megaparsec.Char.Lexer as L
