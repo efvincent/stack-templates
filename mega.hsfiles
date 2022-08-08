@@ -453,6 +453,93 @@ TYP-END
 {-# START_FILE src/Lang/Evaluator.hs #-}
 module Lang.Evaluator where
 
+import Lang.Syntax (Literal(..), Term(..))
+
+-- | isNumeric checks if a term is numeric
+isNum :: Term -> Bool
+isNum (Lit  (LInt _)) = True
+isNum (Succ n       ) = isNum n
+isNum (Pred n       ) = isNum n
+isNum _               = False
+
+-- | isValue returns true iof a term is a value that cannot
+-- be further reduced
+isValue :: Term -> Bool
+isValue = \case
+  Var _ _  -> True
+  Lambda{} -> True
+  Lit    _ -> True
+  Succ   n -> isNum n
+  Pred   n -> isNum n
+  IsZero n -> isNum n
+  App _ _  -> False
+  IfThen{} -> False
+
+shift :: Int -> Term -> Term
+shift shiftAmt = go 0
+ where
+  go :: Int -> Term -> Term
+  go curIdx = \case
+    -- Var and Lambda require a shift
+    Var name idx -> Var name $ if idx >= curIdx then idx + shiftAmt else idx
+    Lambda name typ body -> Lambda name typ $ go (curIdx + 1) body
+    -- all other cases propegate
+    Lit    l             -> Lit l
+    IsZero t             -> IsZero (go curIdx t)
+    Succ   t             -> Succ (go curIdx t)
+    Pred   t             -> Pred (go curIdx t)
+    IfThen predicate tclause fclause ->
+      IfThen (go curIdx predicate) (go curIdx tclause) (go curIdx fclause)
+    App fn arg -> App (go curIdx fn) (go curIdx arg)
+
+subst :: Int -> Term -> Term -> Term
+subst j s = go 0
+  where
+    go :: Int -> Term -> Term
+    go curIdx = \case
+      Var name idx -> if idx == j + curIdx then shift curIdx s else Var name idx
+      Lambda name typ body -> Lambda name typ $ go (curIdx + 1) body
+      -- the rest propegate
+      Lit l -> Lit l
+      IsZero t -> IsZero (go curIdx t)
+      Succ t -> Succ (go curIdx t)
+      Pred t -> Pred (go curIdx t)
+      App fn arg -> App (go curIdx fn) (go curIdx arg)
+      IfThen predicate tclause fclause ->
+        IfThen (go curIdx predicate) (go curIdx tclause) (go curIdx fclause)
+
+-- | β-reduction for top level term. Subs a @Term@ into the body
+-- of a lambda abstraction
+substTop :: Term -> Term -> Term
+substTop s t = shift (-1) $ subst 0 (shift 1 s) t
+
+-- | step - small steps a term into another term if possible
+step :: Term -> Maybe Term
+step (App (Lambda name ty body) t)
+  | isValue t = pure $ substTop t body
+  | otherwise = App (Lambda name ty body) <$> step t
+step (App t1 t2) = App <$> step t1 <*> step t2
+step (Succ (Lit (LInt n))) = pure $ Lit (LInt (n + 1))
+step (Succ t) = Succ <$> step t
+step (Pred (Lit (LInt n))) = pure $ Lit (LInt (n - 1))
+step (Pred t) = Pred <$> step t
+step (IsZero (Lit(LInt n)))
+  | n == 0 = pure (Lit (LBool True))
+  | otherwise = pure (Lit (LBool False))
+step (IsZero t) = IsZero <$> step t
+step (IfThen p t f) = stepIfThen p t f
+-- stuck terms and values
+step (Lambda {}) = Nothing
+step (Var _ _) = Nothing
+step (Lit _) = Nothing
+
+stepIfThen :: Term -> Term -> Term -> Maybe Term
+stepIfThen p t f =
+  pure $ if multiStep p == Lit (LBool True) then multiStep t else multiStep f
+  
+multiStep :: Term -> Term
+multiStep t = maybe t multiStep (step t)
+
 {-# START_FILE src/Extra/Repl.hs #-}
 module Extra.Repl where
 
@@ -463,12 +550,19 @@ import Lang.Syntax (Term)
 import Data.Void (Void)
 import Control.Monad.Reader (runReader)
 import Lang.Environment (emptyEnv)
+import Lang.Evaluator (multiStep)
+
 
 ps :: Parser Term -> Text -> Either (ParseErrorBundle Text Void) Term
 ps parser s = runReader (runParserT parser "repl" s) emptyEnv
 
 ptt :: Text -> Either (ParseErrorBundle Text Void) Term
 ptt = ps term 
+
+eval :: Text -> Term 
+eval s = case ptt s of
+  Left peb -> error $ show peb
+  Right te -> multiStep te
 
 {-# START_FILE makefile #-}
 OPTIMIZATION=-O0
