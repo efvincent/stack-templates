@@ -1,0 +1,743 @@
+{-# START_FILE .vscode/settings.json #-}
+{
+  "files.exclude": {
+    "**/*.hi": true,
+    "**/*.o": true,
+    "**/.stack-work": true,
+    "**/*.bak": true
+  }
+}
+
+{-# START_FILE src/Lexer.x #-}
+{
+module Lexer (alexScanTokens, Token(..)) where
+}
+
+%wrapper "basic"
+
+$digit = 0-9
+$octdig = [0-7]
+$hexdig = [0-9A-Fa-f]
+$special = [\.\;\,\$\|\*\+\?\#\~\-\{\}\(\)\[\]\^\/]
+$graphic = $printable # $white
+$alpha = [a-zA-Z]
+
+@string = \" ($graphic # \")* \"
+@id     = [A-Za-z][A-Za-z\'_]*    
+@char   = ($graphic # $special) | escape
+@escape = '\\' ($printable | 'x' $hexdig+ | 'o' $octdig+ | $digit+)
+@int    = ("0x" $hexdig+ | $digit+)
+
+-----------------------------------------
+--  Token definitions
+-----------------------------------------
+
+tokens :-
+
+$white+                       ;
+$alpha [$alpha $digit \_ \']* { Str }      
+@int                          { Nbr . read } 
+
+{
+
+data Token 
+  = Str String
+  | Nbr Int 
+  deriving (Show, Eq)
+
+}
+
+{-# START_FILE src/Parser.y #-}
+{
+{-# OPTIONS -w #-}        -- generated code produces a couple of
+                          -- warnings that aren't terribly useful
+                          -- but if you want to see warnings for
+                          -- intermingled code you may want to
+                          -- remove this compiler directive
+module Parser where
+
+import qualified Lexer as L
+}
+
+%name parse Text          -- the name of the parse function (parse in this
+                          -- case). The parse function should have the type:
+                          -- 
+                          --    [Token] -> T
+                          --
+                          -- where T is the return type of the parser. The
+                          -- production rules below should produce a value
+                          -- of type T
+                          --
+                          -- %name also specifies the start symbol (Text), a 
+                          -- designated member of the set of nonterminals 
+                          -- from which all the strings in the language may 
+                          -- be derived by successive application of the
+                          -- production rules. More simply stated, the start
+                          -- symbol is typically the root of the AST (which
+                          -- is typically a tree).
+
+                          -- If the start symbol is left out of the %name 
+                          -- directive, then the first nonterminal
+                          -- after ther %% delimiter is assumed to be the
+                          -- start symbol. In this case, it would be Text
+              
+%tokentype { L.Token }    -- identifies the type of token that will be found
+                          -- in the token stream processed by this parser. This
+                          -- is typically found either in a dedicate module, or
+                          -- for smaller projects in the file produced by
+                          -- the lexer (Lexer.x in this case)
+
+%error { parseError }     -- %error identifies the function called when 
+                          -- parse fails. In this simple case we raise
+                          -- an error. More complex error handling is outside
+                          -- of the scope of this version of the template.
+
+%token                    -- tokens (terminal symbols) of the grammar
+                          -- each terminal is defined by pattern matching 
+                          -- against the token from the token stream. The $$
+                          -- symbol is a placeholder that represents the
+                          -- value of the token. Normally the value of the 
+                          -- token is the token itself, but in this case both
+                          -- L.Str and L.Nbr have values with which they're
+                          -- associated (a string and an integer respectively).
+                          -- The $$ indicates from where in the pattern match 
+                          -- the value should be extracted.
+  word  { L.Str $$ }
+  num   { L.Nbr $$ }
+
+%%                        -- This symbol separates the token definition section
+                          -- from the production rules for the grammar
+
+Sentence :: { Sentence }      -- The start symbol of the grammar is Sentence,
+                              -- producing type Sentence as indicated by
+                              -- the double colon. Sentence type, if it can be
+                              -- inferred (and it usually can) is optional, but
+                              -- like in the rest of Haskell it's good practice
+                              -- to annotate type nonterminal with its type.
+                              -- Following the declaration of name and optionally
+                              -- type of the nonterminal, come the options for
+                              -- matching it. Following the non terminal symbol
+                              -- is a colon followed by one or more expansions
+                              -- separated by a pipe character.
+
+  : Lexeme Sentence { $1 : $2 }   
+                              -- For Sentence, one possible expansion is a Lexeme
+                              -- followed by another Sentence. Each expansion is
+                              -- followed by a fragment of Haskell code. Each
+                              -- symbol on the left of the expansion has a 
+                              -- value which can be referenced in the expansion
+                              -- by $n where n is the (1 based) index of the
+                              -- symbols on the left of the expansion.
+                              -- in this case:
+                              --
+                              --    Lexeme    => $1
+                              --    Sentence  => $2
+                              --
+                              -- If this rule matches, then the expansion says
+                              -- to prepend the value of the Lexeme expansion
+                              -- to the following Sentence expansion's value.
+  |             { [] }        -- The other expansion of Sentence, if the
+                              -- first one doesn't match, is the empty list.
+
+Lexeme :: { Lexeme }          -- The Lexeme non-terminal matches a single
+                              -- lexeme, which is either a word or a number
+                              -- terminal symbol as defined in the %token section
+  : word   { Word $1 }        -- when word matches, the value of the match $1
+                              -- is passed to the Word constructor which has
+                              -- the type String -> Lexeme
+  | num    { Number $1 }      -- similarly, when num matches, the value $1 is
+                              -- passed to the Number constructor which has
+                              -- the type Int -> Lexeme
+
+
+{       -- After the token and production rule definitions comes the
+        -- final code block section of the happy parser generator. Typically
+        -- any support functions are defined here, and possibly also the AST
+        -- types. In this case, the AST is super simple, a Sentence is the
+        -- root of the AST, and consists of a list of Lexemes. A Lexeme is
+        -- either a Word or a Number
+
+type Sentence = [Lexeme]
+
+-- | A Lexeme is either a Word or a Number
+data Lexeme
+  = Word String         -- ^ A Word has a String value 
+  | Number Int          -- ^ A number has an Int value
+  deriving (Show, Eq)
+
+-- | The most basic parseError function simply throws the error  
+parseError :: [L.Token] -> a
+parseError tkns = error $ "Parse Error" ++ show tkns
+
+}
+
+{-# START_FILE src/Main.hs #-}
+module Main where
+
+import qualified Lexer as L
+import qualified Parser as P
+
+main :: IO ()
+main = do
+   s <- getContents
+   let parsed = P.parse . L.alexScanTokens $ s
+   print parsed
+
+{-# START_FILE .ghci #-}
+:set -i./src:./test
+:set -fobject-code
+:set -O0
+:set -j4
+:set +s
+:set -w
+
+{-# START_FILE .gitignore #-}
+.stack-work/
+network-uri-lenses.cabal
+.ghc.environment*
+dist*
+.#*
+result
+TAGS
+
+*.hi
+*.o
+
+{-# START_FILE .hlint.yaml #-}
+# HLint configuration file
+# https://github.com/ndmitchell/hlint
+##########################
+
+# This file contains a template configuration file, which is typically
+# placed as .hlint.yaml in the root of your project
+
+
+# Specify additional command line arguments
+#
+# - arguments: [--color, --cpp-simple, -XQuasiQuotes]
+
+
+# Control which extensions/flags/modules/functions can be used
+#
+# - extensions:
+#   - default: false # all extension are banned by default
+#   - name: [PatternGuards, ViewPatterns] # only these listed extensions can be used
+#   - {name: CPP, within: CrossPlatform} # CPP can only be used in a given module
+#
+# - flags:
+#   - {name: -w, within: []} # -w is allowed nowhere
+#
+# - modules:
+#   - {name: [Data.Set, Data.HashSet], as: Set} # if you import Data.Set qualified, it must be as 'Set'
+#   - {name: Control.Arrow, within: []} # Certain modules are banned entirely
+#
+# - functions:
+#   - {name: unsafePerformIO, within: []} # unsafePerformIO can only appear in no modules
+
+
+# Add custom hints for this project
+#
+# Will suggest replacing "wibbleMany [myvar]" with "wibbleOne myvar"
+# - error: {lhs: "wibbleMany [x]", rhs: wibbleOne x}
+
+
+# Turn on hints that are off by default
+#
+# Ban "module X(module X) where", to require a real export list
+# - warn: {name: Use explicit module export list}
+#
+# Replace a $ b $ c with a . b $ c
+# - group: {name: dollar, enabled: true}
+#
+# Generalise map to fmap, ++ to <>
+# - group: {name: generalise, enabled: true}
+
+
+# Ignore some builtin hints
+- ignore: {name: Use camelCase}
+# - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
+
+
+# Define some custom infix operators
+# - fixity: infixr 3 ~^#^~
+
+
+# To generate a suitable file for HLint do:
+# $ hlint --default > .hlint.yaml
+
+{-# START_FILE .stylish-haskell.yaml #-}
+# stylish-haskell configuration file
+# ==================================
+
+# The stylish-haskell tool is mainly configured by specifying steps. These steps
+# are a list, so they have an order, and one specific step may appear more than
+# once (if needed). Each file is processed by these steps in the given order.
+steps:
+  # Convert some ASCII sequences to their Unicode equivalents. This is disabled
+  # by default.
+  # - unicode_syntax:
+  #     # In order to make this work, we also need to insert the UnicodeSyntax
+  #     # language pragma. If this flag is set to true, we insert it when it's
+  #     # not already present. You may want to disable it if you configure
+  #     # language extensions using some other method than pragmas. Default:
+  #     # true.
+  #     add_language_pragma: true
+
+  # Align the right hand side of some elements.  This is quite conservative
+  # and only applies to statements where each element occupies a single
+  # line.
+  - simple_align:
+      cases: true
+      top_level_patterns: true
+      records: true
+
+  # Import cleanup
+  - imports:
+      # There are different ways we can align names and lists.
+      #
+      # - global: Align the import names and import list throughout the entire
+      #   file.
+      #
+      # - file: Like global, but don't add padding when there are no qualified
+      #   imports in the file.
+      #
+      # - group: Only align the imports per group (a group is formed by adjacent
+      #   import lines).
+      #
+      # - none: Do not perform any alignment.
+      #
+      # Default: global.
+      align: global
+
+      # The following options affect only import list alignment.
+      #
+      # List align has following options:
+      #
+      # - after_alias: Import list is aligned with end of import including
+      #   'as' and 'hiding' keywords.
+      #
+      #   > import qualified Data.List      as List (concat, foldl, foldr, head,
+      #   >                                          init, last, length)
+      #
+      # - with_alias: Import list is aligned with start of alias or hiding.
+      #
+      #   > import qualified Data.List      as List (concat, foldl, foldr, head,
+      #   >                                 init, last, length)
+      #
+      # - new_line: Import list starts always on new line.
+      #
+      #   > import qualified Data.List      as List
+      #   >     (concat, foldl, foldr, head, init, last, length)
+      #
+      # Default: after_alias
+      list_align: after_alias
+
+      # Right-pad the module names to align imports in a group:
+      #
+      # - true: a little more readable
+      #
+      #   > import qualified Data.List       as List (concat, foldl, foldr,
+      #   >                                           init, last, length)
+      #   > import qualified Data.List.Extra as List (concat, foldl, foldr,
+      #   >                                           init, last, length)
+      #
+      # - false: diff-safe
+      #
+      #   > import qualified Data.List as List (concat, foldl, foldr, init,
+      #   >                                     last, length)
+      #   > import qualified Data.List.Extra as List (concat, foldl, foldr,
+      #   >                                           init, last, length)
+      #
+      # Default: true
+      pad_module_names: true
+
+      # Long list align style takes effect when import is too long. This is
+      # determined by 'columns' setting.
+      #
+      # - inline: This option will put as much specs on same line as possible.
+      #
+      # - new_line: Import list will start on new line.
+      #
+      # - new_line_multiline: Import list will start on new line when it's
+      #   short enough to fit to single line. Otherwise it'll be multiline.
+      #
+      # - multiline: One line per import list entry.
+      #   Type with constructor list acts like single import.
+      #
+      #   > import qualified Data.Map as M
+      #   >     ( empty
+      #   >     , singleton
+      #   >     , ...
+      #   >     , delete
+      #   >     )
+      #
+      # Default: inline
+      long_list_align: inline
+
+      # Align empty list (importing instances)
+      #
+      # Empty list align has following options
+      #
+      # - inherit: inherit list_align setting
+      #
+      # - right_after: () is right after the module name:
+      #
+      #   > import Vector.Instances ()
+      #
+      # Default: inherit
+      empty_list_align: inherit
+
+      # List padding determines indentation of import list on lines after import.
+      # This option affects 'long_list_align'.
+      #
+      # - <integer>: constant value
+      #
+      # - module_name: align under start of module name.
+      #   Useful for 'file' and 'group' align settings.
+      list_padding: 4
+
+      # Separate lists option affects formatting of import list for type
+      # or class. The only difference is single space between type and list
+      # of constructors, selectors and class functions.
+      #
+      # - true: There is single space between Foldable type and list of it's
+      #   functions.
+      #
+      #   > import Data.Foldable (Foldable (fold, foldl, foldMap))
+      #
+      # - false: There is no space between Foldable type and list of it's
+      #   functions.
+      #
+      #   > import Data.Foldable (Foldable(fold, foldl, foldMap))
+      #
+      # Default: true
+      separate_lists: true
+
+      # Space surround option affects formatting of import lists on a single
+      # line. The only difference is single space after the initial
+      # parenthesis and a single space before the terminal parenthesis.
+      #
+      # - true: There is single space associated with the enclosing
+      #   parenthesis.
+      #
+      #   > import Data.Foo ( foo )
+      #
+      # - false: There is no space associated with the enclosing parenthesis
+      #
+      #   > import Data.Foo (foo)
+      #
+      # Default: false
+      space_surround: false
+
+  # Language pragmas
+  - language_pragmas:
+      # We can generate different styles of language pragma lists.
+      #
+      # - vertical: Vertical-spaced language pragmas, one per line.
+      #
+      # - compact: A more compact style.
+      #
+      # - compact_line: Similar to compact, but wrap each line with
+      #   `{-#LANGUAGE #-}'.
+      #
+      # Default: vertical.
+      style: vertical
+
+      # Align affects alignment of closing pragma brackets.
+      #
+      # - true: Brackets are aligned in same column.
+      #
+      # - false: Brackets are not aligned together. There is only one space
+      #   between actual import and closing bracket.
+      #
+      # Default: true
+      align: true
+
+      # stylish-haskell can detect redundancy of some language pragmas. If this
+      # is set to true, it will remove those redundant pragmas. Default: true.
+      remove_redundant: true
+
+  # Replace tabs by spaces. This is disabled by default.
+  # - tabs:
+  #     # Number of spaces to use for each tab. Default: 8, as specified by the
+  #     # Haskell report.
+  #     spaces: 8
+
+  # Remove trailing whitespace
+  - trailing_whitespace: {}
+
+  # Squash multiple spaces between the left and right hand sides of some
+  # elements into single spaces. Basically, this undoes the effect of
+  # simple_align but is a bit less conservative.
+  # - squash: {}
+
+# A common setting is the number of columns (parts of) code will be wrapped
+# to. Different steps take this into account. Default: 80.
+columns: 80
+
+# By default, line endings are converted according to the OS. You can override
+# preferred format here.
+#
+# - native: Native newline format. CRLF on Windows, LF on other OSes.
+#
+# - lf: Convert to LF ("\n").
+#
+# - crlf: Convert to CRLF ("\r\n").
+#
+# Default: native.
+newline: native
+
+# Sometimes, language extensions are specified in a cabal file or from the
+# command line instead of using language pragmas in the file. stylish-haskell
+# needs to be aware of these, so it can parse the file correctly.
+#
+# No language extensions are enabled by default.
+# language_extensions:
+  # - TemplateHaskell
+  # - QuasiQuotes
+language_extensions:
+  # trivial
+  - EmptyCase
+  - FlexibleContexts
+  - FlexibleInstances
+  - InstanceSigs
+  - MultiParamTypeClasses
+  # only activated once used
+  - LambdaCase
+  - MultiWayIf
+  - NamedFieldPuns
+  - TupleSections
+  # no cost deriving power
+  - DeriveFoldable
+  - DeriveFunctor
+  - DeriveGeneric
+  - DeriveLift
+  - DeriveTraversable
+  - DerivingStrategies
+  - GeneralizedNewtypeDeriving
+  - StandaloneDeriving
+  # used everywhere anyway
+  - OverloadedStrings
+  # ehh syntax
+  - TypeApplications
+
+{-# START_FILE brittany.yaml #-}
+conf_forward:
+  options_ghc:
+    # trivial
+    - -XEmptyCase
+    - -XFlexibleContexts
+    - -XFlexibleInstances
+    - -XInstanceSigs
+    - -XMultiParamTypeClasses
+    # only activated once used
+    - -XLambdaCase
+    - -XMultiWayIf
+    - -XNamedFieldPuns
+    - -XTupleSections
+    # no cost deriving power
+    - -XDeriveFoldable
+    - -XDeriveFunctor
+    - -XDeriveGeneric
+    - -XDeriveLift
+    - -XDeriveTraversable
+    - -XDerivingStrategies
+    - -XGeneralizedNewtypeDeriving
+    - -XStandaloneDeriving
+    # used everywhere anyway
+    - -XOverloadedStrings
+    # ehh syntax
+    - -XTypeApplications
+
+{-# START_FILE hie.yaml #-}
+cradle:
+  stack:
+
+{-# START_FILE LICENSE #-}
+Copyright efvincent (c) 2022
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+{-# START_FILE makefile #-}
+OPTIMIZATION=-O0
+build:
+	cabal new-build all -j --ghc-options $(OPTIMIZATION)
+
+haddock:
+	cabal new-haddock all
+
+haddock-hackage:
+	cabal new-haddock all --haddock-for-hackage --haddock-option=--hyperlinked-source
+	echo "the hackage ui doesn't accept the default format, use command instead"
+	cabal upload -d --publish ./dist-newstyle/*-docs.tar.gz
+
+hpack:
+	nix-shell ./nix/hpack-shell.nix --run "make update-cabal"
+
+ghcid: clean hpack
+	ghcid \
+		--test="main" \
+		--command="ghci" \
+		test/Spec
+ghcid-app: clean hpack
+	ghcid \
+		--main="main" \
+		--command="ghci" \
+		app/exe
+
+ghci:
+	ghci app/exe
+
+etags:
+	hasktags  -e ./src
+
+update-cabal: etags
+	hpack --force ./
+
+clean:
+	rm -fR dist dist-*
+
+.PHONY: test
+
+sdist: hpack
+	nix-build . # ad-hoc proof it builds
+	cabal sdist
+
+run:
+	cabal new-run exe --ghc-options $(OPTIMIZATION) -- \
+
+brittany_:
+	$(shell set -x; for i in `fd hs`; do hlint --refactor --refactor-options=-i $$i; brittany --write-mode=inplace $$i; done)
+
+brittany:
+	nix-shell ./nix/travis-shell.nix --run "make brittany_"
+
+bundle:
+	rm -f result
+	nix-build nix/bundle.nix
+	mv result template
+
+{-# START_FILE package.yaml #-}
+name: HAtempl
+version: 0.1.0.0
+
+dependencies:
+  - base >= 4.7 && < 5
+  - array
+  - monad-control
+  - bytestring
+  
+build-tools:
+  - alex
+  - happy
+
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Wincomplete-uni-patterns
+  - -Wredundant-constraints
+  - -Wincomplete-record-updates
+  - -Widentities
+
+# from https://lexi-lambda.github.io/blog/2018/02/10/an-opinionated-guide-to-haskell-in-2018/
+default-extensions:
+  # trivial
+  - EmptyCase
+  - FlexibleContexts
+  - FlexibleInstances
+  - InstanceSigs
+  - MultiParamTypeClasses
+  # only activated once used
+  - LambdaCase
+  - MultiWayIf
+  - NamedFieldPuns
+  - TupleSections
+  # no cost deriving power
+  - DeriveFoldable
+  - DeriveFunctor
+  - DeriveGeneric
+  - DeriveLift
+  - DeriveTraversable
+  - DerivingStrategies
+  - GeneralizedNewtypeDeriving
+  - StandaloneDeriving
+  # used everywhere anyway
+  - OverloadedStrings
+  # ehh syntax
+  - TypeApplications
+
+executables:
+  HAtempl.exe:
+    main: Main.hs
+    source-dirs:
+    - src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+
+{-# START_FILE README.md #-}
+# Project HAtempl
+
+Project description here. This is most likely a project for playing with some idea or learning something. If it's more of a project than that, this file should be edited to have a proper description. Note that much of this template and information in the initial readme comes from Alexis King's excellent blog post [An opinionated guild to Haskell in 2018](https://lexi-lambda.github.io/blog/2018/02/10/an-opinionated-guide-to-haskell-in-2018/), which may have some bits that are out of date, but still works for me and is chock full of useful information.
+
+Happy hacking!
+
+## Stack
+
+I use stack rather than cabal or something more industrial strength like nix. This is because I'm still a casual Haskeller, using Haskell to experiment and learn, and because it's the most fun language that I've ever used.
+
+Some tips for using `stack`
+
+### Fast builds
+
+You can skip GHC optimization with
+
+```bash
+$ stack build --fast
+```
+
+If you're running tests (I'm still bad at this), then know that running test implies a build, so you can add the fast flag. The following two are equivilant.
+
+```bash
+$ stack build --fast --test
+$ stack test --fast
+```
+
+### Documentation
+
+It is useful to build documentation as well as code. You can do this with the haddock flag. Note that this can take a long time to run. Open option is to only build docs for dependencies, which prevents having to re-run haddock every time you build.
+
+```bash
+$ stack test --fast --haddock-deps
+```
+
+### Watching for Changes
+
+You can either use `ghcid`, or run a more robust build that's watching for changes with
+
+```bash
+$ stack test --fast --haddock-deps --file-watch
+```
+
+{-# START_FILE Setup.hs #-}
+import Distribution.Simple
+main = defaultMain
+
+{-# START_FILE stack.yaml #-}
+resolver: lts-19.0
+system-ghc: true
+packages:
+- .
+
+extra-deps:
