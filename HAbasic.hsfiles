@@ -59,7 +59,7 @@ module Parser where
 import qualified Lexer as L
 }
 
-%name parse Text          -- the name of the parse function (parse in this
+%name parse Sentence      -- the name of the parse function (parse in this
                           -- case). The parse function should have the type:
                           -- 
                           --    [Token] -> T
@@ -68,7 +68,7 @@ import qualified Lexer as L
                           -- production rules below should produce a value
                           -- of type T
                           --
-                          -- %name also specifies the start symbol (Text), a 
+                          -- %name also specifies the start symbol (Sentence), a 
                           -- designated member of the set of nonterminals 
                           -- from which all the strings in the language may 
                           -- be derived by successive application of the
@@ -79,7 +79,7 @@ import qualified Lexer as L
                           -- If the start symbol is left out of the %name 
                           -- directive, then the first nonterminal
                           -- after ther %% delimiter is assumed to be the
-                          -- start symbol. In this case, it would be Text
+                          -- start symbol. In this case, it would be Sentence
               
 %tokentype { L.Token }    -- identifies the type of token that will be found
                           -- in the token stream processed by this parser. This
